@@ -1,0 +1,18 @@
+# Jamais de secrets ni d'historique Git dans le contexte de build
+.env
+.env.*
+!.env.example
+.git
+.github
+
+# Fichiers Python et environnements locaux
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Inutiles dans l'image
+Dockerfile*
+docker-compose*.y*ml
+*.md
