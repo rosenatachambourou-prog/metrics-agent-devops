@@ -1,0 +1,19 @@
+# Mode développement : fusionné automatiquement par `docker compose up`
+services:
+  api:
+    image: metrics-agent:dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./:/app
+    restart: "no"
+
+  agent:
+    image: metrics-agent:dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./:/app
+    restart: "no"
