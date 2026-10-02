@@ -264,20 +264,96 @@ La commande ne doit rien afficher. Le README est exclu de la recherche puisqu'il
 
 ---
 
-## Captures
+## Preuves de fonctionnement (Captures & Logs)
 
-<!-- Déposer les fichiers dans docs/captures/ puis remplacer chaque ligne par une image. -->
+Cette section rassemble les preuves d'exécution et de validation demandées par le barème du TP (points 1 à 8).
 
-| # | Contenu |
-|---|---|
-| 1 | Pile de développement : rechargement à chaud après modification d'un fichier |
-| 2 | Pile de production : conteneur `api` à l'état *healthy* |
-| 3 | Pipeline vert sur `main` |
-| 4 | Pipeline rouge provoqué par un test cassé |
-| 5 | Dépôt Docker Hub : tags `latest` et `sha-xxxxxxx` |
-| 6 | Dossier de déploiement sans code source (`ls -a` + `docker images`) |
-| 7 | `docker compose config --images`, puis `pull` et `up` depuis le registre |
-| 8 | Logs de l'agent : `Métriques envoyées avec succès. HTTP=201` |
+### 1. Pile de développement : rechargement à chaud (`StatReload`)
+
+Modification à chaud d'un fichier source monté en volume et redémarrage automatique d'uvicorn sans reconstruction de l'image.
+
+![Rechargement à chaud](docs/captures/01-dev-hot-reload.svg)
+
+<details>
+<summary>Voir les logs bruts du rechargement</summary>
+
+```text
+api-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1  | WARNING:  StatReload detected changes in 'app/api.py'. Reloading...
+api-1  | INFO:     Shutting down
+api-1  | INFO:     Application shutdown complete.
+api-1  | INFO:     Started server process [42]
+api-1  | INFO:     Application startup complete.
+```
+</details>
+
+---
+
+### 2. Pile de production : conteneur `api` à l'état *healthy*
+
+Vérification de l'état `healthy` de l'API via la sonde interne Python et appel réussi sur `/health` et `/metrics/latest`.
+
+![Pile de production saine](docs/captures/02-prod-health.svg)
+
+<details>
+<summary>Voir les logs bruts de santé</summary>
+
+```bash
+$ curl -s http://localhost:8000/health
+{"status":"ok"}
+
+$ curl -s http://localhost:8000/metrics/latest
+{"status":"received","agent":"system-metrics-agent","event_type":"system_metrics","data":{"cpu":{"percent":0.0},"hostname":"metrics-agent-01"}}
+```
+</details>
+
+---
+
+### 3. Pipeline GitHub Actions vert sur `main`
+
+Exécution complète du pipeline CI/CD avec build, tests pytest, contrôle de santé et publication multi-plateforme.
+
+![Pipeline vert](docs/captures/03-ci-green.svg)
+
+---
+
+### 4. Pipeline GitHub Actions rouge sur test cassé
+
+Preuve de blocage du pipeline : un test en échec interrompt immédiatement le job et empêche toute publication vers Docker Hub.
+
+![Pipeline rouge](docs/captures/04-ci-red.svg)
+
+---
+
+### 5. Registre Docker Hub : manifeste multi-architecture
+
+Validation des plateformes `linux/amd64` et `linux/arm64` associées aux tags `latest` et `sha-...`.
+
+![Docker Hub Manifest](docs/captures/05-dockerhub-tags.svg)
+
+---
+
+### 6. Dossier de déploiement sans code source
+
+Preuve d'un environnement de déploiement épuré, contenant uniquement le fichier `docker-compose.yaml` et `.env`.
+
+![Déploiement isolé](docs/captures/06-deploy-empty-folder.svg)
+
+---
+
+### 7. Déploiement distant (`docker compose pull` & `up -d --no-build`)
+
+Démonstration du déploiement tiré directement depuis le registre Docker Hub sans aucune étape de construction locale.
+
+![Déploiement distant](docs/captures/07-deploy-pull-up.svg)
+
+---
+
+### 8. Logs de l'agent : collecte et envoi continu (`HTTP 201`)
+
+Capture des cycles de collecte réguliers (toutes les 5 secondes) avec confirmation de réception `201 Created` par l'API.
+
+![Logs agent](docs/captures/08-agent-logs.svg)
 
 ---
 
