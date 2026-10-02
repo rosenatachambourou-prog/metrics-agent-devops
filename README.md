@@ -39,14 +39,17 @@ L'agent joint l'API par le **nom de service Compose** (`http://api:8000/metrics`
 
 ```
 .
-├── app/                     code de l'application
-├── tests/                   tests unitaires (pytest)
-├── Dockerfile               image de production (multi-stage)
-├── Dockerfile.dev           image de développement (rechargement à chaud)
-├── docker-compose.yaml      pile de production
+├── app/                         code de l'application
+├── tests/                       tests unitaires (pytest)
+├── docs/captures/               captures d'écran du rendu
+├── Dockerfile                   image de production (multi-stage)
+├── Dockerfile.dev               image de développement (rechargement à chaud)
+├── docker-compose.yaml          pile de production
 ├── docker-compose.override.yml  surcouche de développement (fusionnée automatiquement)
+├── requirements.txt             dépendances d'exécution
+├── requirements-dev.txt         dépendances de test
 ├── .dockerignore
-├── .env.example             modèle de configuration (aucun secret)
+├── .env.example                 modèle de configuration (aucun secret)
 ├── pytest.ini
 └── .github/workflows/ci-cd.yml
 ```
@@ -67,7 +70,7 @@ cp .env.example .env
 
 | Variable | Rôle | Valeur par défaut |
 |---|---|---|
-| `DOCKERHUB_USERNAME` | compte propriétaire de l'image à déployer | — (obligatoire) |
+| `DOCKERHUB_USERNAME` | compte propriétaire de l'image à déployer | `serge000` |
 | `IMAGE_TAG` | tag à déployer (`latest` ou `sha-xxxxxxx`) | `latest` |
 | `METRICS_ENDPOINT` | URL visée par l'agent | `http://api:8000/metrics` |
 | `COLLECTION_INTERVAL` | période de collecte, en secondes | `5` |
@@ -114,21 +117,27 @@ C'est le scénario cible : **aucun code source n'est nécessaire**, seulement le
 ```bash
 mkdir deploiement && cd deploiement
 curl -O https://raw.githubusercontent.com/rosenatachambourou-prog/metrics-agent-devops/main/docker-compose.yaml
-cp /chemin/vers/.env.example .env     # puis renseigner DOCKERHUB_USERNAME et IMAGE_TAG
-docker compose config --images        # vérifier l'image avant de télécharger
+```
+
+Créer ensuite un `.env` contenant au minimum `DOCKERHUB_USERNAME`, `IMAGE_TAG`, `METRICS_ENDPOINT`, `COLLECTION_INTERVAL` et `REQUEST_TIMEOUT`, puis :
+
+```bash
+docker compose config --images
 docker compose pull
 docker compose up -d --no-build
 ```
 
-`--no-build` interdit toute reconstruction : si la pile démarre, c'est que l'image provient bien du registre.
+`docker compose config --images` affiche l'image réellement retenue avant tout téléchargement. `--no-build` interdit toute reconstruction : si la pile démarre, c'est que l'image provient bien du registre.
 
 Vérification :
 
 ```bash
 docker compose ps
-curl -s http://localhost:8000/health        # {"status":"ok"}
-docker compose logs --tail 15 agent         # Métriques envoyées avec succès. HTTP=201
+curl -s http://localhost:8000/health
+docker compose logs --tail 15 agent
 ```
+
+Attendu : `{"status":"ok"}` sur `/health`, et dans les logs de l'agent `Métriques envoyées avec succès. HTTP=201` à chaque intervalle.
 
 > **Piège rencontré.** Compose applique l'ordre de priorité suivant : variables du shell **avant** fichier `.env`. Un `DOCKERHUB_USERNAME` hérité du terminal a fait tirer la mauvaise image malgré un `.env` correct. D'où le réflexe `docker compose config --images` avant tout déploiement.
 
@@ -157,9 +166,10 @@ Secrets utilisés (dépôt → Settings → Secrets and variables → Actions) :
 
 | Secret | Contenu |
 |---|---|
+| `DOCKERHUB_USERNAME` | compte Docker Hub de publication |
 | `DOCKERHUB_TOKEN` | jeton d'accès personnel Docker Hub, portée *Read & Write* |
 
-Le nom d'utilisateur Docker Hub n'est pas un secret : il est public, il apparaît dans le nom de l'image. Il est donc déclaré en clair dans le bloc `env:` du workflow.
+Le nom d'utilisateur n'est pas une donnée sensible en soi — il figure dans le nom de l'image publique. Le passer tout de même en secret évite d'avoir à modifier le workflow si le compte de publication change, ce qui est arrivé une fois au cours du projet.
 
 ---
 
@@ -175,7 +185,7 @@ Vérifier le manifeste multi-architecture :
 docker buildx imagetools inspect serge000/metrics-agent:latest
 ```
 
-<!-- À compléter si la publication automatique vers rose0000 aboutit avant le rendu. -->
+La sortie doit lister deux entrées `Platform`, une par architecture. Un client Docker tirant ce tag reçoit automatiquement la variante correspondant à sa machine.
 
 ---
 
@@ -213,17 +223,21 @@ docker buildx imagetools inspect serge000/metrics-agent:latest
 - Le conteneur s'exécute sous un utilisateur non privilégié.
 - La publication est conditionnée à la branche `main`, donc à une pull request relue et fusionnée.
 
-Contrôle avant rendu — aucune trace de secret dans l'historique :
+**Limite assumée.** Le dépôt appartient à Rose, et GitHub ne propose pas de rôle administrateur sur un dépôt personnel : seule la propriétaire peut écrire les secrets. Le pipeline publie donc sous le compte `serge000`, dont le jeton a été transmis une seule fois à Rose puis révoqué après le rendu. Une organisation GitHub aurait évité ce partage, chaque membre y gérant ses propres secrets.
+
+Contrôle avant rendu — aucune trace de jeton dans l'historique :
 
 ```bash
-git log -p --all | grep -iE "dckr_pat|password|token" 
+git log -p --all -- . ':!README.md' | grep -nE "dckr_pat_"
 ```
+
+La commande ne doit rien afficher. Le README est exclu de la recherche puisqu'il mentionne lui-même le préfixe des jetons.
 
 ---
 
 ## Captures
 
-<!-- Déposer les captures dans docs/captures/ puis remplacer les chemins ci-dessous. -->
+<!-- Déposer les fichiers dans docs/captures/ puis remplacer chaque ligne par une image. -->
 
 | # | Contenu |
 |---|---|
@@ -232,8 +246,8 @@ git log -p --all | grep -iE "dckr_pat|password|token"
 | 3 | Pipeline vert sur `main` |
 | 4 | Pipeline rouge provoqué par un test cassé |
 | 5 | Dépôt Docker Hub : tags `latest` et `sha-xxxxxxx` |
-| 6 | Dossier de déploiement vide (`ls -a` + `docker images`) |
-| 7 | `docker compose config --images` puis `pull` et `up` depuis le registre |
+| 6 | Dossier de déploiement sans code source (`ls -a` + `docker images`) |
+| 7 | `docker compose config --images`, puis `pull` et `up` depuis le registre |
 | 8 | Logs de l'agent : `Métriques envoyées avec succès. HTTP=201` |
 
 ---
@@ -248,8 +262,8 @@ git log -p --all | grep -iE "dckr_pat|password|token"
 | `docker-compose.yaml` | Serge | Rose | #3 |
 | `docker-compose.override.yml` et `.env.example` | Serge | Rose | #4 |
 | Pipeline CI/CD | Serge | Rose | #6 |
+| README | Serge | Rose | #7 |
 | Dépôt, droits, secrets, protection de `main` | Rose | — | — |
 | Vérification de l'image sur amd64 | Rose | — | — |
-| README | Serge | Rose | — |
 
 Toutes les contributions sont passées par une branche dédiée et une pull request relue avant fusion dans `main`.
