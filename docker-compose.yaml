@@ -2,7 +2,7 @@ name: metrics-agent
 
 services:
   api:
-    image: ${DOCKERHUB_USERNAME:?definir DOCKERHUB_USERNAME dans .env}/metrics-agent:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USERNAME:?Veuillez definir DOCKERHUB_USERNAME dans votre fichier .env (voir .env.example)}/metrics-agent:${IMAGE_TAG:-latest}
     build: .
     env_file: .env
     ports:
@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   agent:
-    image: ${DOCKERHUB_USERNAME:?definir DOCKERHUB_USERNAME dans .env}/metrics-agent:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USERNAME:?Veuillez definir DOCKERHUB_USERNAME dans votre fichier .env (voir .env.example)}/metrics-agent:${IMAGE_TAG:-latest}
     build: .
     command: ["python", "-m", "app.agent"]
     env_file: .env

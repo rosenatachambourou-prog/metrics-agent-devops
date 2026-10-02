@@ -70,7 +70,7 @@ cp .env.example .env
 
 | Variable | Rôle | Valeur par défaut |
 |---|---|---|
-| `DOCKERHUB_USERNAME` | compte propriétaire de l'image à déployer | `serge000` |
+| `DOCKERHUB_USERNAME` | compte propriétaire de l'image à déployer | — (obligatoire, à renseigner dans `.env`) |
 | `IMAGE_TAG` | tag à déployer (`latest` ou `sha-xxxxxxx`) | `latest` |
 | `METRICS_ENDPOINT` | URL visée par l'agent | `http://api:8000/metrics` |
 | `COLLECTION_INTERVAL` | période de collecte, en secondes | `5` |
