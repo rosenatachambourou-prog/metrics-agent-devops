@@ -1,6 +1,21 @@
+# Fichiers de configuration locale et secrets
 .env
+.env.*
+!.env.example
+
+# Fichiers Python et caches
 __pycache__/
+*.py[cod]
+*$py.class
 .pytest_cache/
-*.pyc
+.coverage
+htmlcov/
 .venv/
 venv/
+env/
+
+# Fichiers système et éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
