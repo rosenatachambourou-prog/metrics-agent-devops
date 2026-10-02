@@ -58,9 +58,12 @@ L'agent joint l'API par le **nom de service Compose** (`http://api:8000/metrics`
 
 ## Prérequis
 
-- Docker Desktop (ou Docker Engine + Compose v2)
-- Git
-- Python 3.12 uniquement pour lancer les tests hors conteneur
+- **Docker Desktop** (ou Docker Engine + Docker Compose v2)
+- **Git**
+- **Comptes nécessaires :**
+  - **Compte GitHub** (gestion du dépôt, des secrets CI/CD et exécution des Actions)
+  - **Compte Docker Hub** avec un *Personal Access Token* (portée *Read & Write*) pour la publication et le tirage des images
+- **Python 3.12** (facultatif, uniquement pour lancer les tests unitairement hors conteneur)
 
 Copier le modèle de configuration avant tout lancement :
 
@@ -82,24 +85,48 @@ cp .env.example .env
 
 ## Lancer en développement
 
-`docker-compose.override.yml` est fusionné automatiquement par Compose. Il construit `Dockerfile.dev`, monte le code en volume et active `--reload` : toute modification d'un fichier Python redémarre uvicorn sans reconstruire l'image.
+Deux méthodes permettent de lancer l'environnement de développement selon vos besoins :
+
+### Option A : Directement avec Dockerfile.dev (Docker CLI)
+
+Cette méthode répond à l'exigence d'exécution unitaire utilisant directement `Dockerfile.dev` :
 
 ```bash
+# 1. Construction de l'image de développement
+docker build -f Dockerfile.dev -t metrics-agent:dev .
+
+# 2. Lancement du service API avec montage en volume pour rechargement à chaud
+docker run -d --name metrics-api-dev \
+  -p 8000:8000 \
+  -v $(pwd):/app \
+  metrics-agent:dev
+
+# 3. Lancer les tests unitaires à l'intérieur du conteneur
+docker exec -it metrics-api-dev pytest -q
+
+# 4. Arrêt et nettoyage du conteneur
+docker rm -f metrics-api-dev
+```
+
+### Option B : Avec Docker Compose (surcouche override automatique)
+
+`docker-compose.override.yml` est fusionné automatiquement par `docker compose up`. Il applique `Dockerfile.dev`, monte le code local dans `/app` et active `--reload` sur uvicorn :
+
+```bash
+# Lancement de la pile complète en mode développement
 docker compose up -d --build
+
+# Suivi des logs de l'API (uvicorn --reload actif)
 docker compose logs -f api
-```
 
-Lancer les tests dans le conteneur de développement :
-
-```bash
+# Exécution de la suite de tests pytest dans le conteneur actif
 docker compose exec api pytest -q
-```
 
-Arrêter :
-
-```bash
+# Arrêt de la pile
 docker compose down
 ```
+
+> **Note sur le rechargement à chaud :** Toute modification dans le code de l'API (`app/api.py`) redémarre instantanément uvicorn sans reconstruction. Pour l'agent de collecte (boucle synchrone en continu), relancez simplement son service après modification : `docker compose restart agent`.
 
 ## Lancer en production (construction locale)
 
@@ -175,9 +202,11 @@ Le nom d'utilisateur n'est pas une donnée sensible en soi — il figure dans le
 
 ## Images publiées
 
-| Dépôt | Tags | Architectures |
-|---|---|---|
-| `serge000/metrics-agent` | `latest`, `sha-e44a732` | `linux/amd64`, `linux/arm64` |
+Lien public vers le registre Docker Hub : **[hub.docker.com/r/serge000/metrics-agent](https://hub.docker.com/r/serge000/metrics-agent)**
+
+| Dépôt | Tags | Architectures | Lien direct |
+|---|---|---|---|
+| `serge000/metrics-agent` | `latest`, `sha-e44a732` | `linux/amd64`, `linux/arm64` | [Consulter sur Docker Hub](https://hub.docker.com/r/serge000/metrics-agent) |
 
 Vérifier le manifeste multi-architecture :
 
@@ -185,7 +214,7 @@ Vérifier le manifeste multi-architecture :
 docker buildx imagetools inspect serge000/metrics-agent:latest
 ```
 
-La sortie doit lister deux entrées `Platform`, une par architecture. Un client Docker tirant ce tag reçoit automatiquement la variante correspondant à sa machine.
+La sortie liste deux entrées `Platform` (`linux/amd64` et `linux/arm64`). Un client Docker tirant ce tag reçoit automatiquement la variante adaptée à son processeur.
 
 ---
 
