@@ -231,6 +231,12 @@ Secrets utilisés (dépôt → Settings → Secrets and variables → Actions) :
 
 Le nom d'utilisateur n'est pas une donnée sensible en soi — il figure dans le nom de l'image publique. Le passer tout de même en secret évite d'avoir à modifier le workflow si le compte de publication change, ce qui est arrivé une fois au cours du projet.
 
+> [!NOTE]
+> **Privilèges du jeton et métadonnées du dépôt Docker Hub :**
+> Nous avions initialement prévu d'automatiser la mise à jour de certaines données du dépôt Docker Hub (description courte et page de présentation) directement depuis le pipeline via l'action `peter-evans/dockerhub-description`. Cependant, l'API Docker Hub exige des privilèges **Administrateur** (*Admin*) sur le Personal Access Token pour autoriser la modification de ces informations (erreur `403 Forbidden` rencontrée avec un jeton standard).
+> 
+> Par respect rigoureux du **principe de moindre privilège** (*Principle of Least Privilege*), nous avons finalement fait le choix de **ne pas accorder de droits administrateur** à la CI/CD. Nous avons maintenu le jeton restreint aux droits stricts de lecture/écriture (*Read & Write*) nécessaires au push des images, configuré `continue-on-error: true` sur l'étape de synchronisation, et conservé la documentation de présentation dans le fichier [`DOCKERHUB.md`](DOCKERHUB.md).
+
 ---
 
 ## Images publiées
@@ -282,6 +288,7 @@ La sortie liste deux entrées `Platform` (`linux/amd64` et `linux/arm64`). Un cl
 - Aucun secret dans le dépôt : `.env` est ignoré par Git et par Docker, seul `.env.example` est versionné et il ne contient aucune valeur sensible.
 - `.dockerignore` exclut `.env`, `.env.*`, `.git`, `.github`, `__pycache__/`, `.venv/` — ni l'historique Git ni les secrets locaux n'entrent dans le contexte de build.
 - L'authentification à Docker Hub se fait par jeton d'accès personnel révocable, jamais par mot de passe de compte.
+- **Principe de moindre privilège sur Docker Hub :** nous avons voulu automatiser la modification de certaines métadonnées du dépôt (description et README), mais cette opération requiert des droits administrateur (*Admin*). Nous avons finalement fait le choix de sécurité de ne pas confier d'accès admin au pipeline CI/CD : le jeton d'accès est strictement cantonné aux droits de lecture/écriture (*Read & Write*).
 - Le conteneur s'exécute sous un utilisateur non privilégié.
 - La publication est conditionnée à la branche `main`, donc à une pull request relue et fusionnée.
 
