@@ -100,10 +100,11 @@ jobs:
 
       - name: Mettre à jour la description Docker Hub
         if: github.ref == 'refs/heads/main'
-        uses: peter-evans/dockerhub-description@v4
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-          short-description: "Agent de métriques système (psutil) et API de réception FastAPI conteneurisés en multi-architecture."
+          short-description: "Agent de métriques système et API FastAPI (multi-architecture)."
           readme-filepath: ./DOCKERHUB.md
