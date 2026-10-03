@@ -9,8 +9,8 @@ Conteneurisation, orchestration et pipeline CI/CD d'une petite application de co
 | Membre | Rôle principal | Machine |
 |---|---|---|
 | MAVOUNGOU Serge Murlain | Images Docker, orchestration Compose, pipeline CI/CD initial, publication des images | MacBook Air M4, 32 Go (arm64) |
-| Rose | Dépôt GitHub, relecture des pull requests, secrets, vérification amd64 | HP EliteBook 840, 8 Go, Windows 10 (amd64) |
-| Loïck (Mel Sardes) | Audit DevOps, refonte modulaire CI/CD en 3 jobs (Fail-Fast), sécurisation des secrets, captures de preuves, déploiement Cloud Railway | MacBook Air M1, 8 Go (arm64) |
+| MBOUROU GYAMERAH Rose Natacha Liyane | Dépôt GitHub, relecture des pull requests, secrets, vérification amd64 | HP EliteBook 840, 8 Go, Windows 10 (amd64) |
+| MAKOSSO Loïck Esdras | Audit DevOps, refonte modulaire CI/CD en 3 jobs (Fail-Fast), sécurisation des secrets, captures de preuves, déploiement Cloud Railway | MacBook Air M1, 8 Go (arm64) |
 
 ---
 
@@ -23,11 +23,11 @@ L'application se compose de deux processus qui partagent **la même image** :
 
 ```
                  réseau Docker « metrics-net »
-   ┌──────────────┐                      ┌──────────────┐
-   │   agent      │ ──POST /metrics──▶   │     api      │
-   │ python -m    │                      │  uvicorn     │
-   │  app.agent   │                      │ app.api:app  │
-   └──────────────┘                      └──────┬───────┘
+   +--------------+                      +--------------+
+   |   agent      | ── POST /metrics ──> │     api      │
+   | python -m    |                      |  uvicorn     │
+   |  app.agent   |                      | app.api:app  │
+   +--------------+                      +------+-------+
                                                 │ 8000
                                                 ▼
                                           hôte : localhost:8000
@@ -292,7 +292,7 @@ La sortie liste deux entrées `Platform` (`linux/amd64` et `linux/arm64`). Un cl
 - Le conteneur s'exécute sous un utilisateur non privilégié.
 - La publication est conditionnée à la branche `main`, donc à une pull request relue et fusionnée.
 
-**Limite assumée.** Le dépôt appartient à Rose, et GitHub ne propose pas de rôle administrateur sur un dépôt personnel : seule la propriétaire peut écrire les secrets. Le pipeline publie donc sous le compte `serge000`, dont le jeton a été transmis une seule fois à Rose puis révoqué après le rendu. Une organisation GitHub aurait évité ce partage, chaque membre y gérant ses propres secrets.
+**Limite assumée.** Le dépôt appartient à MBOUROU GYAMERAH Rose Natacha Liyane, et GitHub ne propose pas de rôle administrateur sur un dépôt personnel : seule la propriétaire peut écrire les secrets. Le pipeline publie donc sous le compte `serge000`, dont le jeton a été transmis une seule fois à Rose puis révoqué après le rendu. Une organisation GitHub aurait évité ce partage, chaque membre y gérant ses propres secrets.
 
 Contrôle avant rendu — aucune trace de jeton dans l'historique :
 
@@ -410,15 +410,16 @@ Capture des cycles de collecte réguliers (toutes les 5 secondes) avec confirmat
 | README initial | Serge | Rose | #7 |
 | Dépôt, droits, secrets, protection de `main` | Rose | — | — |
 | Vérification de l'image sur amd64 | Rose | — | — |
-| Sécurisation des secrets Docker Hub et fiabilisation du pipeline | Loïck | — | #11 |
-| Neutralisation des identifiants et sécurisation `.gitignore` / `.env.example` | Loïck | — | #12 |
-| Robustesse et validation des variables d'environnement (`docker-compose.yaml`) | Loïck | — | #13 |
-| Documentation des modes d'exécution `Dockerfile.dev` et prérequis | Loïck | — | #14 |
-| Production et intégration des 8 captures de preuves fonctionnelles (SVG) | Loïck | — | #15 |
-| Automatisation de la documentation Docker Hub via `DOCKERHUB.md` | Loïck | — | #16 |
-| Déploiement Cloud sur Railway (bonus) et intégration des endpoints | Loïck | — | #17 |
-| Fiabilisation CI/CD et montée de version `dockerhub-description@v5` | Loïck | — | #18 |
-| Refonte architecturale du pipeline CI/CD en 3 jobs modulaires (*Fail-Fast*) | Loïck | — | #19 |
-| Formalisation du principe de moindre privilège (accès admin Docker Hub) | Loïck | — | #20 |
+| Sécurisation des secrets Docker Hub et fiabilisation du pipeline | Loïck | Rose | #11 |
+| Neutralisation des identifiants et sécurisation `.gitignore` / `.env.example` | Loïck | Rose | #12 |
+| Robustesse et validation des variables d'environnement (`docker-compose.yaml`) | Loïck | Rose | #13 |
+| Documentation des modes d'exécution `Dockerfile.dev` et prérequis | Loïck | Rose | #14 |
+| Production et intégration des 8 captures de preuves fonctionnelles (SVG) | Loïck | Rose | #15 |
+| Automatisation de la documentation Docker Hub via `DOCKERHUB.md` | Loïck | Rose | #16 |
+| Déploiement Cloud sur Railway (bonus) et intégration des endpoints | Loïck | Rose | #17 |
+| Fiabilisation CI/CD et montée de version `dockerhub-description@v5` | Loïck | Rose | #18 |
+| Refonte architecturale du pipeline CI/CD en 3 jobs modulaires (*Fail-Fast*) | Loïck | Rose | #19 |
+| Formalisation du principe de moindre privilège (accès admin Docker Hub) | Loïck | Rose | #20 |
+| Documentation des contributions de MAKOSSO Loïck Esdras et spécifications machine | Loïck | Rose | #21 |
 
-Toutes les contributions sont passées par une branche dédiée et une pull request avant fusion dans `main`.
+Toutes les contributions sont passées par une branche dédiée et une pull request relue avant fusion dans `main`.
