@@ -170,6 +170,27 @@ Attendu : `{"status":"ok"}` sur `/health`, et dans les logs de l'agent `Métriqu
 
 ---
 
+## Déploiement Cloud (Bonus)
+
+Conformément à la proposition de bonus du sujet de TP (*« déployer réellement l'API sur une plateforme cloud gratuite (...) à partir de l'image Docker Hub, et fournir l'URL publique »*), l'API a été déployée en environnement cloud managé sur **Railway** directement à partir de l'image publiée :
+
+- **URL racine de l'API :** **[https://metrics-agent.up.railway.app](https://metrics-agent.up.railway.app)**
+- **Sonde de santé (`/health`) :** **[https://metrics-agent.up.railway.app/health](https://metrics-agent.up.railway.app/health)** (`{"status":"ok"}`)
+- **Consultation des métriques (`/metrics`) :** **[https://metrics-agent.up.railway.app/metrics](https://metrics-agent.up.railway.app/metrics)**
+- **Documentation OpenAPI interactive :** **[https://metrics-agent.up.railway.app/docs](https://metrics-agent.up.railway.app/docs)**
+
+### Test direct de l'API en ligne
+
+```bash
+# Vérifier la santé du service déployé
+curl -i https://metrics-agent.up.railway.app/health
+
+# Consulter la liste des métriques stockées
+curl -s https://metrics-agent.up.railway.app/metrics
+```
+
+---
+
 ## Pipeline CI/CD
 
 Fichier : `.github/workflows/ci-cd.yml`. Déclenché sur `push` et `pull_request` vers `main`, plus lancement manuel.

@@ -2,12 +2,14 @@
 
 [![CI/CD Status](https://github.com/rosenatachambourou-prog/metrics-agent-devops/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rosenatachambourou-prog/metrics-agent-devops/actions)
 [![Platforms](https://img.shields.io/badge/platforms-amd64%20%7C%20arm64-blue.svg)](https://hub.docker.com/r/serge000/metrics-agent)
+[![Live Demo](https://img.shields.io/badge/demo-Railway-success.svg)](https://metrics-agent.up.railway.app/health)
 
 Application conteneurisée composée de deux processus complémentaires partageant **une même image minimale et sécurisée** :
 - **`api`** : API FastAPI servie par Uvicorn qui expose `/health`, `/metrics` et `/metrics/latest` sur le port `8000`.
 - **`agent`** : Démon de collecte périodique (CPU, RAM, charge système via `psutil` et `procps`) qui transmet les métriques au format JSON en HTTP à l'API.
 
-Dépôt GitHub du projet : [github.com/rosenatachambourou-prog/metrics-agent-devops](https://github.com/rosenatachambourou-prog/metrics-agent-devops).
+- **Démo en production (Railway) :** [https://metrics-agent.up.railway.app/health](https://metrics-agent.up.railway.app/health)
+- **Dépôt GitHub du projet :** [github.com/rosenatachambourou-prog/metrics-agent-devops](https://github.com/rosenatachambourou-prog/metrics-agent-devops).
 
 ---
 
