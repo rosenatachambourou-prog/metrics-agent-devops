@@ -193,29 +193,41 @@ curl -s https://metrics-agent.up.railway.app/metrics
 
 ## Pipeline CI/CD
 
-Fichier : `.github/workflows/ci-cd.yml`. Déclenché sur `push` et `pull_request` vers `main`, plus lancement manuel.
+Fichier : `.github/workflows/ci-cd.yml`. Déclenché sur `push` et `pull_request` vers `main`, plus lancement manuel (`workflow_dispatch`).
 
-Un seul job, `build-test-push`, dans cet ordre :
+Le pipeline est structuré en **3 jobs modulaires et ordonnés** garantissant le principe de *Fail-Fast* et la sécurité des publications :
 
-1. **Checkout** du code
-2. **Préparation de Buildx**
-3. **Build de l'image de production**, chargée sur le runner, pas encore publiée
-4. **Installation de Python 3.12**
-5. **Tests unitaires** (`pytest -q`)
-6. **Test de l'image construite** — démarrage du conteneur et appel de `/health` en boucle jusqu'à réponse
-7. **Connexion à Docker Hub** — *uniquement sur `main`*
-8. **Génération des tags** (`latest` + `sha-xxxxxxx`) — *uniquement sur `main`*
-9. **Préparation de QEMU** — *uniquement sur `main`*
-10. **Publication multi-architecture** (`linux/amd64`, `linux/arm64`) — *uniquement sur `main`*
+1. **Job `test` (Tests unitaires applicatifs — Fail-Fast) :**
+   - Checkout du code source.
+   - Installation de Python 3.12 (avec cache pip).
+   - Exécution immédiate des tests avec `pytest -q`.
+   - *Bénéfice :* Si un test régresse, l'exécution échoue en ~3 secondes sans gaspiller de minutes GitHub Actions ni de cycles CPU à construire des images Docker.
 
-Les quatre dernières étapes portent la condition `if: github.ref == 'refs/heads/main'`. Conséquence : une pull request est construite et testée mais **ne peut rien publier**. Seul du code relu et fusionné atteint le registre.
+2. **Job `container-test` (Validation du conteneur Docker) :**
+   - Dépendance : s'exécute uniquement si le job `test` réussit (`needs: test`).
+   - Préparation de Docker Buildx.
+   - Construction locale de l'image de test (`load: true`, tag `metrics-agent:ci`) avec cache GitHub Actions (`gha`).
+   - Démarrage du conteneur en arrière-plan et interrogation active de la sonde `/health` (boucle d'attente avec arrêt garanti du conteneur via `trap 'docker rm -f api-ci' EXIT`).
+   - Ce job est validé sur **toutes les pull requests et sur `main`**.
+
+3. **Job `publish` (Publication multi-architecture vers Docker Hub) :**
+   - Dépendance : s'exécute après validation complète du conteneur (`needs: container-test`).
+   - Condition stricte : **uniquement sur la branche `main`** (`if: github.ref == 'refs/heads/main'`).
+   - Vérification préalable de la présence des secrets requis.
+   - Initialisation de **QEMU** pour l'émulation multi-plateforme, puis configuration de **Buildx**.
+   - Connexion sécurisée à Docker Hub via les secrets de dépôt.
+   - Génération des métadonnées et tags Docker (`latest` + `sha-<commit>`).
+   - Construction et publication simultanée pour architectures `linux/amd64` et `linux/arm64`.
+   - Synchronisation automatique de la page Docker Hub avec [`DOCKERHUB.md`](DOCKERHUB.md) via l'action `peter-evans/dockerhub-description@v5`.
+
+Grâce à cette séparation, une pull request est testée unitairement et son conteneur est validé fonctionnellement, mais **ne peut rien publier**. Seul le code relu, validé et fusionné sur `main` déclenche le job `publish`.
 
 Secrets utilisés (dépôt → Settings → Secrets and variables → Actions) :
 
 | Secret | Contenu |
 |---|---|
-| `DOCKERHUB_USERNAME` | compte Docker Hub de publication |
-| `DOCKERHUB_TOKEN` | jeton d'accès personnel Docker Hub, portée *Read & Write* |
+| `DOCKERHUB_USERNAME` | Nom d'utilisateur Docker Hub du compte de publication |
+| `DOCKERHUB_TOKEN` | Jeton d'accès personnel (PAT) Docker Hub avec droits *Read & Write* (ou *Admin* pour la description) |
 
 Le nom d'utilisateur n'est pas une donnée sensible en soi — il figure dans le nom de l'image publique. Le passer tout de même en secret évite d'avoir à modifier le workflow si le compte de publication change, ce qui est arrivé une fois au cours du projet.
 
