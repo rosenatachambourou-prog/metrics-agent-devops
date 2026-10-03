@@ -14,7 +14,29 @@ env:
   IMAGE_NAME: metrics-agent
 
 jobs:
-  build-test-push:
+  # 1. Tests unitaires applicatifs (Fail-Fast immédiat)
+  test:
+    name: Tests unitaires (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v6
+
+      - name: Installer Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Exécuter la suite pytest
+        run: |
+          pip install -r requirements-dev.txt
+          pytest -q
+
+  # 2. Validation du conteneur (Build local & Test de santé /health)
+  container-test:
+    name: Validation de l'image Docker (/health)
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout du code
@@ -23,7 +45,7 @@ jobs:
       - name: Préparer Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build de l'image de production
+      - name: Build de l'image de test
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -32,24 +54,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Installer Python 3.12
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Tests unitaires (pytest)
-        run: |
-          pip install -r requirements-dev.txt
-          pytest -q
-
-      - name: Test de l'image construite (/health)
+      - name: Vérifier la sonde de santé (/health)
         run: |
           docker run -d --name api-ci -p 8000:8000 ${{ env.IMAGE_NAME }}:ci
           trap 'docker rm -f api-ci' EXIT
           for i in $(seq 1 15); do
             if curl -fsS http://localhost:8000/health; then
-              echo "Health check réussi"
+              echo "Sonde /health validée avec succès"
               exit 0
             fi
             sleep 2
@@ -57,23 +68,36 @@ jobs:
           docker logs api-ci
           exit 1
 
+  # 3. Publication multi-plateforme vers Docker Hub (uniquement sur main)
+  publish:
+    name: Publication Docker Hub (multi-arch)
+    needs: container-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v6
+
       - name: Vérifier la présence des secrets Docker Hub
-        if: github.ref == 'refs/heads/main'
         run: |
           if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
             echo "::error::Les secrets DOCKERHUB_USERNAME et DOCKERHUB_TOKEN doivent être configurés dans le dépôt GitHub (Settings -> Secrets and variables -> Actions)."
             exit 1
           fi
 
+      - name: Préparer QEMU (images amd64 + arm64)
+        uses: docker/setup-qemu-action@v4
+
+      - name: Préparer Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Connexion à Docker Hub
-        if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Générer les tags (latest + sha)
-        if: github.ref == 'refs/heads/main'
+      - name: Générer les métadonnées et tags (latest + sha)
         id: meta
         uses: docker/metadata-action@v6
         with:
@@ -82,12 +106,7 @@ jobs:
             type=raw,value=latest
             type=sha
 
-      - name: Préparer QEMU (images amd64 + arm64)
-        if: github.ref == 'refs/heads/main'
-        uses: docker/setup-qemu-action@v4
-
-      - name: Push vers Docker Hub
-        if: github.ref == 'refs/heads/main'
+      - name: Build & Push vers Docker Hub (multi-arch)
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -99,7 +118,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Mettre à jour la description Docker Hub
-        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         uses: peter-evans/dockerhub-description@v5
         with:
